@@ -1,0 +1,25 @@
+######## Getting staged files paths and dumping to file
+git diff --name-only --cached >> stagedFilePaths.txt
+
+######## Looking for path of project.pbxproj file
+file="stagedFilePaths.txt"
+while read line 
+do
+	if [[ $line =~ .*project.pbxproj.* ]]; then
+		pathToProjectPbxproj=$line
+		break
+	fi
+done <"$file"
+
+######## Running python script which sorts the project.pbxproj sections if path found
+[ -n "$pathToProjectPbxproj" ] && python print_diff.py $pathToProjectPbxproj
+
+##### Test changes
+###chmod 777 $pathToProjectPbxproj
+###echo someChangeInsertedInFile >> $pathToProjectPbxproj
+
+######## Re-adding sorted project.pbxproj if path exists
+[ -n "$pathTOProjectPbxproj" ] && git add $pathToProjectPbxproj
+
+######## Cleaning up the file
+rm stagedFilePaths.txt
