@@ -11,7 +11,7 @@ do
 	fi
 done <"$file"
 
-######## Running python script which sorts the project.pbxproj sections if path found
+######## Running python script which sorts the project.pbxproj sections if path found (need to change the python script file here)
 [ -n "$pathToProjectPbxproj" ] && python print_diff.py $pathToProjectPbxproj
 
 ##### Test changes
@@ -19,7 +19,7 @@ done <"$file"
 ###echo someChangeInsertedInFile >> $pathToProjectPbxproj
 
 ######## Re-adding sorted project.pbxproj if path exists
-[ -n "$pathTOProjectPbxproj" ] && git add $pathToProjectPbxproj
+[ -n "$pathToProjectPbxproj" ] && git add $pathToProjectPbxproj
 
 ######## Cleaning up the file
 rm stagedFilePaths.txt
