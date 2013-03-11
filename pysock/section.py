@@ -56,38 +56,47 @@ class Section(object):
                 self.raw_lines[line_index - 1] = str(self.lines[line_index - self.starting_line_number])
             line_index += 1
 
-class SectionWithThreeKeys(Section):
-    def __init__(self, key, key2, key3, raw_lines):
-        self.key2 = key2
-        self.key3 = key3
-        super(SectionWithThreeKeys, self).__init__(key, raw_lines)
+
+class SectionSection:
+    def __init__(self, start_line_index, end_line_index, raw_lines):
+        self.starting_line_index = start_line_index
+        self.ending_line_index = end_line_index
+        self.raw_lines = raw_lines
+        self.lines = []
+
+    def feed_lines(self):
+        for i in range(self.starting_line_index - 1, self.ending_line_index):
+            self.lines.append(Line(self.raw_lines[i]))
+
+    def sort_lines(self):
+        for line in self.lines:
+            print line
+
+        self.lines.sort(key=lambda x: x.content, reverse=False)
+
+        for line in self.lines:
+            print line
+
+        for i in range(self.starting_line_index - 1, self.ending_line_index):
+            self.raw_lines[i] = str(self.lines[i - self.starting_line_index])
 
 
-    def find_starting_and_ending_line_number(self):
-        found_key_1 = False
-        found_key_2 = False
+def find_deep_sections(raw_lines):
+    sections = []
 
-        key_1_starting_line = '/* Begin %s section */' % self.key
-        key_2_starting_line = '/* %s */ = {' % self.key2
-        key_3_starting_line = '%s = ( = {' % self.key3
-        key_3_ending_line = ');'
+    start_key = ' = ('
+    end_key = ');'
+    start_line_index = None
+    end_line_index = None
 
-        line_index = 1
+    line_index = 1
+    for raw_line in raw_lines:
+        if start_key in raw_line:
+            start_line_index = line_index + 1
+        if end_key in raw_line:
+            end_line_index = line_index - 1
+            sections.append(
+                SectionSection(start_line_index=start_line_index, end_line_index=end_line_index, raw_lines=raw_lines))
+        line_index += 1
 
-        for raw_line in self.raw_lines:
-            if not found_key_1:
-                if key_1_starting_line in raw_line:
-                    found_key_1 = True
-            if not found_key_2:
-                if key_2_starting_line in raw_line:
-                    found_key_2 = True
-            if found_key_1 and found_key_2:
-                if key_3_starting_line in raw_line:
-                    self.starting_line_number = line_index + 1
-                if key_3_ending_line in raw_line:
-                    self.ending_line_number = line_index - 1
-                    break
-
-            line_index += 1
-
-
+    return sections

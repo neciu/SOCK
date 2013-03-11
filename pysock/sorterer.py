@@ -1,4 +1,4 @@
-from pysock.section import SectionWithThreeKeys
+from pysock.section import find_deep_sections
 from section import Section
 
 
@@ -23,11 +23,17 @@ def sort_critical_sections_in_pbx_file(pbx_file_path):
     # for line in raw_lines:
     #     print line
 
-    section1 = SectionWithThreeKeys(key='PBXGroup', key2='Resources', key3='children', raw_lines=raw_lines)
-    section1.sort_lines()
+    # section1 = SectionWithThreeKeys(key='PBXGroup', key2='Resources', key3='children', raw_lines=raw_lines)
+    # section1.sort_lines()
+    #
+    # section2 = SectionWithThreeKeys(key='PBXResourcesBuildPhase', key2='Resources', key3='files', raw_lines=raw_lines)
+    # section2.sort_lines()
 
-    section2 = SectionWithThreeKeys(key='PBXResourcesBuildPhase', key2='Resources', key3='files', raw_lines=raw_lines)
-    section2.sort_lines()
+    deep_sections = find_deep_sections(raw_lines)
+    for section in deep_sections:
+        print '[%d, %d]' % (section.starting_line_index, section.ending_line_index)
+        section.feed_lines()
+        section.sort_lines()
 
     pbx_file = open(pbx_file_path, 'w')
 
