@@ -1,13 +1,24 @@
+import re
+
+
 class Line():
     def __init__(self, raw_line):
         index = raw_line.find('/*')
         self.prefix = raw_line[:index]
         self.content = raw_line[index:]
 
-    def __unicode__(self):
-        return self.prefix + self.content
+        if self.prefix is not None or self.content is not None:
+            prefix_in_right_format = re.compile('\\t*[A-Z0-9]{24} {1}').match(self.prefix)
+            if not prefix_in_right_format:
+                self.prefix = None
+                self.content = None
+        else:
+            self.prefix = None
+            self.content = None
 
     def __str__(self):
+        if self.prefix is None or self.content is None:
+            return 'Line with wrong prefix: "%s" or wrong content "%s".' % (self.prefix, self.content)
         return self.prefix + self.content
 
 
@@ -66,19 +77,14 @@ class SectionSection:
 
     def feed_lines(self):
         for i in range(self.starting_line_index - 1, self.ending_line_index):
-            self.lines.append(Line(self.raw_lines[i]))
+            line = Line(self.raw_lines[i])
+            if line.prefix is not None and line.content is not None:
+                self.lines.append(Line(self.raw_lines[i]))
 
     def sort_lines(self):
-        for line in self.lines:
-            print line
-
         self.lines.sort(key=lambda x: x.content, reverse=False)
-
-        for line in self.lines:
-            print line
-
         for i in range(self.starting_line_index - 1, self.ending_line_index):
-            self.raw_lines[i] = str(self.lines[i - self.starting_line_index])
+            self.raw_lines[i] = str(self.lines[i - (self.starting_line_index - 1)])
 
 
 def find_deep_sections(raw_lines):
@@ -95,8 +101,10 @@ def find_deep_sections(raw_lines):
             start_line_index = line_index + 1
         if end_key in raw_line:
             end_line_index = line_index - 1
-            sections.append(
-                SectionSection(start_line_index=start_line_index, end_line_index=end_line_index, raw_lines=raw_lines))
+            section = SectionSection(start_line_index=start_line_index, end_line_index=end_line_index, raw_lines=raw_lines)
+            section.feed_lines()
+            if len(section.lines) > 0:
+                sections.append(section)
         line_index += 1
 
     return sections

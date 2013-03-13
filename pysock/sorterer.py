@@ -31,8 +31,6 @@ def sort_critical_sections_in_pbx_file(pbx_file_path):
 
     deep_sections = find_deep_sections(raw_lines)
     for section in deep_sections:
-        print '[%d, %d]' % (section.starting_line_index, section.ending_line_index)
-        section.feed_lines()
         section.sort_lines()
 
     pbx_file = open(pbx_file_path, 'w')
