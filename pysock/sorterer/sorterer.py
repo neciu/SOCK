@@ -1,5 +1,4 @@
-from pysock.section import find_deep_sections
-from section import Section
+from section import Section, find_deep_sections
 
 
 def sort_critical_sections_in_pbx_file(pbx_file_path):

@@ -1,5 +1,5 @@
 import sys
-from pysock.sorterer import sort_critical_sections_in_pbx_file
+from sorterer.sorterer import sort_critical_sections_in_pbx_file
 
 def main(arguments):
     if not len(arguments) == 2:
