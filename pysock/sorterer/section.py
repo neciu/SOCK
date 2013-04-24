@@ -1,37 +1,115 @@
-import re
+# The MIT License (MIT)
+#
+# Copyright (c) 2013
+#     Tomasz Netczuk (netczuk.tomasz at gmail.com)
+#     Dariusz Seweryn (dariusz.seweryn at gmail.com)
+#     https://github.com/neciu/SOCK
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 
-class Line():
-    def __init__(self, raw_line):
-        index = raw_line.find('/*')
-        self.prefix = raw_line[:index]
-        self.content = raw_line[index:]
+class DeepRecord():
+    def __init__(self, content):
+        self.content = content
 
-        if self.prefix is not None or self.content is not None:
-            prefix_in_right_format = re.compile('\\t*[A-Z0-9]{24} {1}').match(self.prefix)
-            if not prefix_in_right_format:
-                self.prefix = None
-                self.content = None
-        else:
-            self.prefix = None
-            self.content = None
+        start_index = content.find('/*')
+        end_index = content.find('*/')
+        self.name = content[start_index + 2:end_index]
 
-    def __str__(self):
-        if self.prefix is None or self.content is None:
-            return 'Line with wrong prefix: "%s" or wrong content "%s".' % (self.prefix, self.content)
-        return self.prefix + self.content
+
+class Record():
+    def __init__(self, raw_lines, start_line_index):
+        self.raw_lines = raw_lines
+        self.start_line_index = start_line_index
+        self.end_line_index = self.find_end_line_index()
+        self.lines = self.load_lines()
+        self.name = self.find_record_name()
+        self.deep_record_start_line_index = None
+        self.deep_record_end_line_index = None
+        self.deep_records = self.load_deep_records()
+
+    def find_end_line_index(self):
+        end_record_key = '};'
+
+        line_index = 0
+        while True:
+            line = self.raw_lines[self.start_line_index + line_index]
+            if end_record_key in line:
+                return self.start_line_index + line_index
+            line_index += 1
+
+        AssertionError('No end line index in record %s', str(self))
+
+    def load_lines(self):
+        lines = []
+        for line_index in range(0, self.end_line_index - self.start_line_index + 1):
+            lines.append(self.raw_lines[self.start_line_index + line_index])
+        return lines
+
+    def find_record_name(self):
+        start_line = self.lines[0]
+        key_start_index = start_line.find('/*')
+        key_end_index = start_line.find('*/')
+        return start_line[key_start_index + 2:key_end_index]
+
+    def load_deep_records(self):
+        start_key = ' = ('
+        end_key = ');'
+
+        line_index = self.start_line_index
+        for line in self.lines:
+            if start_key in line:
+                self.deep_record_start_line_index = line_index
+            elif end_key in line:
+                self.deep_record_end_line_index = line_index
+            line_index += 1
+
+        if self.deep_record_start_line_index is None or self.deep_record_end_line_index is None:
+            return None
+
+        deep_records = []
+        for line_index in range(self.deep_record_start_line_index + 1, self.deep_record_end_line_index):
+            deep_records.append(DeepRecord(self.raw_lines[line_index]))
+
+        return deep_records
+
+    def sort_deep_records(self):
+        if self.deep_records is None:
+            return
+        self.deep_records.sort(key=lambda x: x.name, reverse=False)
+
+        line_index = self.deep_record_start_line_index + 1
+        for deep_record in self.deep_records:
+            self.lines[line_index - self.start_line_index] = deep_record.content
+            line_index += 1
 
 
 class Section(object):
     def __init__(self, key, raw_lines):
         self.key = key
-        self.starting_line_index = None
-        self.ending_line_index = None
+        self.start_line_index = None
+        self.end_line_index = None
         self.raw_lines = raw_lines
-        self.lines = []
+        self.records = []
 
         self.find_starting_and_ending_line_number()
-        self.feed_lines()
+        self.feed_records()
 
     def find_starting_and_ending_line_number(self):
         starting_line = '/* Begin %s section */' % self.key
@@ -40,66 +118,35 @@ class Section(object):
 
         for raw_line in self.raw_lines:
             if starting_line in raw_line:
-                self.starting_line_index = line_index
+                self.start_line_index = line_index
             if ending_line in raw_line:
-                self.ending_line_index = line_index
+                self.end_line_index = line_index
                 break
             line_index += 1
 
-    def feed_lines(self):
-        line_index = 0
+    def feed_records(self):
+        line_index = self.start_line_index + 1
 
-        for raw_line in self.raw_lines:
-            if self.starting_line_index < line_index < self.ending_line_index:
-                self.lines.append(Line(raw_line))
-            line_index += 1
-
-    def sort_lines(self):
-        if self.starting_line_index is None or self.ending_line_index is None:
-            AssertionError("Section does not contain starting line index or ending line index.")
-
-        self.lines.sort(key=lambda x: x.content, reverse=False)
-
-        for line_index in range(0, len(self.lines)):
-            self.raw_lines[self.starting_line_index + 1 + line_index] = str(self.lines[line_index])
-
-
-class DeepSection:
-    def __init__(self, start_line_index, end_line_index, raw_lines):
-        self.starting_line_index = start_line_index
-        self.ending_line_index = end_line_index
-        self.raw_lines = raw_lines
-        self.lines = []
-
-    def feed_lines(self):
-        for i in range(self.starting_line_index - 1, self.ending_line_index):
-            line = Line(self.raw_lines[i])
-            if line.prefix is not None and line.content is not None:
-                self.lines.append(Line(self.raw_lines[i]))
+        while (line_index < self.end_line_index):
+            record = Record(self.raw_lines, line_index)
+            self.records.append(record)
+            line_index += len(record.lines)
 
     def sort_lines(self):
-        self.lines.sort(key=lambda x: x.content, reverse=False)
-        for i in range(self.starting_line_index - 1, self.ending_line_index):
-            self.raw_lines[i] = str(self.lines[i - (self.starting_line_index - 1)])
+        if self.start_line_index is None or self.end_line_index is None:
+            AssertionError('Section does not contain starting line index or ending line index.')
 
+        self.records.sort(key=lambda x: x.name, reverse=False)
 
-def find_deep_sections(raw_lines):
-    sections = []
+        pre_lines = self.raw_lines[:self.start_line_index + 1]
+        post_lines = self.raw_lines[self.end_line_index:]
+        self.raw_lines = pre_lines + post_lines
 
-    start_key = ' = ('
-    end_key = ');'
-    start_line_index = None
+        line_index = self.start_line_index + 1
+        for record in self.records:
+            record.sort_deep_records()
+            for line in record.lines:
+                self.raw_lines.insert(line_index, line)
+                line_index += 1
 
-    line_index = 1
-    for raw_line in raw_lines:
-        if start_key in raw_line:
-            start_line_index = line_index + 1
-        if end_key in raw_line:
-            end_line_index = line_index - 1
-            section = DeepSection(start_line_index=start_line_index, end_line_index=end_line_index, raw_lines=raw_lines)
-            section.feed_lines()
-            if len(section.lines) > 0:
-                sections.append(section)
-        line_index += 1
-
-    return sections
+        return self.raw_lines
