@@ -30,22 +30,56 @@ from section import Section
 def sort_critical_sections_in_pbx_file(pbx_file_path):
     raw_lines = read_raw_lines(pbx_file_path)
 
-    build_file_section = Section(key='PBXBuildFile', raw_lines=raw_lines)
-    raw_lines = build_file_section.sort_lines()
+    for line in raw_lines:
+        print line
 
-    file_reference_section = Section(key='PBXFileReference', raw_lines=raw_lines)
-    raw_lines = file_reference_section.sort_lines()
+    print '========================================================================='
 
-    group_section = Section(key='PBXGroup', raw_lines=raw_lines)
-    raw_lines = group_section.sort_lines()
+    sort_lines_in_section(section_key='PBXBuildFile', lines=raw_lines)
+    sort_lines_in_section(section_key='PBXFrameworksBuildPhase', lines=raw_lines)
 
-    resources_section = Section(key='PBXResourcesBuildPhase', raw_lines=raw_lines)
-    raw_lines = resources_section.sort_lines()
+    for line in raw_lines:
+        print line
 
-    sources_section = Section(key='PBXSourcesBuildPhase', raw_lines=raw_lines)
-    raw_lines = sources_section.sort_lines()
+    print '========================================================================='
 
-    write_sorted_raw_lines(raw_lines, pbx_file_path)
+    # file_reference_section = Section(key='PBXFileReference', raw_lines=raw_lines)
+    # group_section = Section(key='PBXGroup', raw_lines=raw_lines)
+    # resources_section = Section(key='PBXResourcesBuildPhase', raw_lines=raw_lines)
+    # sources_section = Section(key='PBXSourcesBuildPhase', raw_lines=raw_lines)
+
+    # write_sorted_raw_lines(raw_lines, pbx_file_path)
+
+
+def sort_lines_in_section(section_key, lines):
+    section = Section(key=section_key, lines=lines)
+
+    if section.start_line_index is None or section.end_line_index is None:
+        AssertionError('Section %s does not contain starting or ending line index.' % section_key)
+
+    section.records.sort(key=lambda x: x.name, reverse=False)
+
+    for record in section.records:
+        for line in record.property_lines:
+            lines.remove(line)
+
+    line_index = section.start_line_index + 1
+    for record in section.records:
+        sort_deep_records_in_record(record)
+        for line in record.property_lines:
+            lines.insert(line_index, line)
+            line_index += 1
+
+
+def sort_deep_records_in_record(record):
+    if record.deep_records is None:
+        return
+    record.deep_records.sort(key=lambda x: x.name, reverse=False)
+
+    line_index = record.deep_record_start_line_index + 1
+    for deep_record in record.deep_records:
+        record.property_lines[line_index - record.start_line_index] = deep_record.content
+        line_index += 1
 
 
 def read_raw_lines(pbx_file_path):
