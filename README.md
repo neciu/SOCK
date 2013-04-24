@@ -1,7 +1,7 @@
 SOCK
 ====
 
-**Simple Omitter of Conflicts Kit** - tool that prevents merge conflicts in .pbxproj file in **Xcode** projects
+**Simple Omitter of Conflicts Kit** - tool that prevents some of merge conflicts in .pbxproj file in **Xcode** projects
 
 How does it work?
 ----
@@ -12,7 +12,7 @@ Right now we have only one way to deal with this problem: **sock-sort** script. 
 - PBXResourcesBuildPhase
 - PBXSourcesBuildPhase
 
-Sorted pbxproj file is less vournable to merge conflicts because in unsorted file all new resources, files and so on are added at the end of the section. In our approach new files are added in alphabetically sorted list so there is significant chance (which gets bigger with every file added to the project) to insert this file in different line - which is loved by git merge tools.
+Sorted pbxproj file is less vulnerable to merge conflicts because in unsorted file all new resources, files and so on are added at the end of the section. In our approach new files are added in alphabetically sorted list so there is significant chance (which gets bigger with every file added to the project) to insert this file in different line - which is handled better by git merge tools.
 
 Sorting script is ran every time you commit changes of .pbxproj file.
 
@@ -21,7 +21,7 @@ How to use it?
 1. First off you need to clone **pysock** directory and **sock-sort.sh** script into root of your project.
 2. Next you need to create git hook: `ln -s ../../sock-sort.sh .git/hooks/pre-commit`
 3. Add permissions `chmod 555 .git/hooks/pre-commit` 
-4. In your master branch sort .pbxproj file for the first time by changing something in .pbxproj and commiting **or** manually runnig sorting script: `python pysock/sock.py AwesomeProject.xcodeproj/project.pbxproj` and then commiting changes.
+4. In your master branch sort .pbxproj file for the first time by changing something in .pbxproj and commiting **or** manually running sorting script: `python pysock/sock.py AwesomeProject.xcodeproj/project.pbxproj` and then commiting changes.
 5. And your done! Every next branch will have sorted .pbxproj file and every time you merge you'll see less conflicts.
 
 **Warning** it is required that every person in team uses this script otherwise it will generate more conflicts.
