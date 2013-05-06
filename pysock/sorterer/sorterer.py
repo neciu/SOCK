@@ -24,31 +24,21 @@
 # THE SOFTWARE.
 
 
+import os
 from section import Section
 
 
 def sort_critical_sections_in_pbx_file(pbx_file_path):
     raw_lines = read_raw_lines(pbx_file_path)
 
-    for line in raw_lines:
-        print line
-
-    print '========================================================================='
-
     sort_lines_in_section(section_key='PBXBuildFile', lines=raw_lines)
     sort_lines_in_section(section_key='PBXFrameworksBuildPhase', lines=raw_lines)
+    sort_lines_in_section(section_key='PBXFileReference', lines=raw_lines)
+    sort_lines_in_section(section_key='PBXGroup', lines=raw_lines)
+    sort_lines_in_section(section_key='PBXResourcesBuildPhase', lines=raw_lines)
+    sort_lines_in_section(section_key='PBXSourcesBuildPhase', lines=raw_lines)
 
-    for line in raw_lines:
-        print line
-
-    print '========================================================================='
-
-    # file_reference_section = Section(key='PBXFileReference', raw_lines=raw_lines)
-    # group_section = Section(key='PBXGroup', raw_lines=raw_lines)
-    # resources_section = Section(key='PBXResourcesBuildPhase', raw_lines=raw_lines)
-    # sources_section = Section(key='PBXSourcesBuildPhase', raw_lines=raw_lines)
-
-    # write_sorted_raw_lines(raw_lines, pbx_file_path)
+    write_sorted_raw_lines(raw_lines, pbx_file_path)
 
 
 def sort_lines_in_section(section_key, lines):
@@ -61,7 +51,7 @@ def sort_lines_in_section(section_key, lines):
 
     for record in section.records:
         for line in record.property_lines:
-            lines.remove(line)
+            del lines[section.start_line_index + 1]
 
     line_index = section.start_line_index + 1
     for record in section.records:
@@ -92,10 +82,8 @@ def read_raw_lines(pbx_file_path):
 
 
 def write_sorted_raw_lines(raw_lines, pbx_file_path):
+    os.remove(pbx_file_path)
     pbx_file = open(pbx_file_path, 'w')
-    pbx_file.truncate()
-    pbx_file.flush()
-    pbx_file.write('')
     for line in raw_lines:
         pbx_file.write('%s\n' % line)
     pbx_file.close()
